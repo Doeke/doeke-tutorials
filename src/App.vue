@@ -10,14 +10,18 @@ import GameGraphics from './gamegraphics/GameGraphics.vue';
 
 <style>
 body {
-  font: 14px/1.5 sans-serif;
+  font: 16px/1.5 Georgia, serif;
   background: #eee;
 }
 .App {
   width: 600px;
-  margin: 32px auto;
+  margin: 32px auto 128px;
 }
-.small {
-  font-size: 80%;
+h1, h2 {
+  font: bold 32px/1.5 sans-serif;
+  margin-top: 32px;
+}
+h2 {
+  font-size: 120%;
 }
 </style>

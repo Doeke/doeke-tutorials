@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build --base=/doeke-tutorials/",
+    "build": "rm -rf docs && vue-tsc --noEmit && vite build --base=/doeke-tutorials/ && mv dist docs",
     "serve": "vite preview"
   },
   "dependencies": {
