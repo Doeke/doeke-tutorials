@@ -3,10 +3,10 @@
   <Cube3D />
 
   <p>
-    In this article we will take a short look into the world of programming video game graphics.
+    In this short article we will take a look at the world of programming video game graphics.
     I will talk about what is needed to draw a 3-dimensional cube like the one we see above,
-    and afterwards you should be able to understand the source code for the example.
-    The full code for this tutorial can be found on github:
+    and afterwards you should have a better understanding of graphics programming.
+    The source code for this project, including the spinning cube and this article can be found on github:
     <a href="https://github.com/doeke/doeke-tutorials/">github.com/doeke-tutorials/</a>
   </p>
 
@@ -14,10 +14,12 @@
   <p>
     In video game graphics, everything you see is actually made out of flat triangles, placed next to each other to give the illusion of complex shapes.
     This means that even the surface of objects like a cube or a sphere are approximated using multiple smaller triangles.
-    These triangles are also called polygons, each corner of a polygon is called a vertex (plural: vertices).
   </p>
+  <img src="/bunnytriangles.jpg" class="image">
   <p>
-    To position a triangle in 3-dimensional space, we only have to describe the position of each of the three corners in X, Y, Z coordinates.
+    These triangles are also called polygons, each corner of a polygon is called a vertex (plural: vertices).
+    To position a triangle in 3-dimensional space, we only have to describe the position of each of each vertex in X, Y, Z coordinates.
+    The position or color of a vertex is called an attribute of the vertex.
     Modern video games can create photo-realistic environments made up out of thousands of triangles!
   </p>
 
@@ -40,30 +42,33 @@
     each capable of drawing polygons and pixels independently of the other cores.
     In other words, they can draw on all the pixels of the screen, at the same time!
   </p>
+  <img src="/architecture_comparison.jpg" class="image">
   <p>
     Great, that's one problem solved, but it created a new problem:
     How does our computer program, which is executed by the CPU, communicate with the GPU inside the computer?
     This is where graphics libraries like WebGL come in, using these we can tell the GPU exactly what we want it to draw.
   </p>
 
-  <h2>Buffers and textures</h2>
+  <h2>Buffers</h2>
   <p>
     All the data that a normal computer program needs to work with, is stored inside computer memory, which is linked to the CPU.
-    However, the data that the GPU needs, such as images and information about the triangles,
-    needs to be stored inside the GPU's own memory rather than in CPU memory.
-    The reason for this again has to do with performance (speed), for the GPU it is much faster to have its own memory chip close by.
+    However, the data that the GPU needs, such as the colors and positions the triangles,
+    also needs to be stored inside the GPU's own memory rather than just in CPU memory.
+    The reason for this again has to do with performance (speed), it is much faster for the GPU to have its own memory.
   </p>
   <p>
-    The downside of this is that triangle and image data will first need to be copied to the GPU memory before we can draw the game.
-    This is what happens during video game loading screens, the user has to wait while we copy all this data to the GPU memory!
-    Number data like triangle positions are called "buffers" when they're stored in GPU memory, and images like the Vue logo in the example are called "textures".
+    The downside of this separate memory is that the triangle data will first need to be copied to the GPU memory before we can draw the game.
+    This is what happens during video game loading screens, the user has to wait while data for complex environments is copied to the GPU memory!
+    Data like triangle colors and positions are stored in arrays called "buffers" inside GPU memory, which need to be created before they can be used.
   </p>
 
   <h2>Shader programs</h2>
   <p>
-    Shader programs are small programs written in a computer language made specifically for the GPU.
+    Shader programs are small programs written in a different computer language made specifically for the GPU.
     The two main parts of a shader program are called the vertex shader and the fragment shader.
+    We can ignore the other stages in the image below, they happen automatically.
   </p>
+  <img src="/pipeline.png" class="image">
   <p>
     The vertex shader tells the GPU where on the screen each corner of every triangle should be placed.
     This changes every time the object that the triangle is a part of moves or rotates,
@@ -74,24 +79,27 @@
 
   <h2>Canvas Element</h2>
   <p>
-    Web pages are made out of elements for text, tables, images, etc.
-    It used to be impossible to draw 3-dimensional triangles and pixels from inside the web browser.
+    Web pages are made out of simple HTML elements for text, tables, images, etc.
+    That's why it used to be impossible to draw 3-dimensional games from inside the web browser.
   </p>
   <p>
     For this purpose, the &lt;canvas> element was invented.
     The canvas element is like a smaller screen inside a web page which can be given a width and height in pixels,
-    and to which we can draw either 2d or 3d graphics.
+    and to which we can draw either 2d or 3d graphics using WebGL!
+    To animate the cube, we execute the render function many times per second using a requestAnimationFrame callback.
   </p>
 
-  <h2>Finally</h2>
+  <h2>Code</h2>
   <p>
-    Thanks for reading! If you have any questions, don't hesitate to ask.
-    I had to leave out a lot of details, if there is interest I can make a sequel.
+    <a href="https://github.com/Doeke/doeke-tutorials/blob/main/src/cubeCode.ts">You can view the source code for the spinning cube here</a>.
+    Hopefully with the information above, the code should be a little easier to understand.
+    The source for the cube example originally comes from the
+    <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Using_textures_in_WebGL">Mozilla web tutorials</a>,
+    an excellent resource for learning more!
   </p>
   <p>
-    The code for the cube example comes from the
-    <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Using_textures_in_WebGL">Mozilla web tutorials</a>,
-    an excellent resource for learning!
+    There is a lot more to talk about (you may notice I skipped matrixes entirely), but I hope this serves as a basic introduction.
+    Thanks for reading!
   </p>
 </template>
 
@@ -100,4 +108,9 @@ import Cube3D from './Cube3D.vue';
 </script>
 
 <style>
+.image {
+  width: 70%;
+  margin: 32px auto;
+  display: block;
+}
 </style>

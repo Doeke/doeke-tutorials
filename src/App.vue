@@ -9,16 +9,17 @@ import GameGraphics from './gamegraphics/GameGraphics.vue';
 </script>
 
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;900&display=swap');
 body {
-  font: 16px/1.5 Georgia, serif;
+  font: 18px/1.4 'Lato', sans-serif;
   background: #eee;
 }
 .App {
-  width: 600px;
-  margin: 32px auto 128px;
+  width: 800px;
+  margin: 32px auto 250px;
 }
 h1, h2 {
-  font: bold 32px/1.5 sans-serif;
+  font-size: 32px;
   margin-top: 32px;
 }
 h2 {

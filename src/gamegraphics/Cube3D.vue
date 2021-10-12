@@ -1,11 +1,10 @@
 <template>
-  <canvas ref="canvas" width="600" height="400"></canvas>
+  <canvas ref="canvas" width="800" height="400"></canvas>
 </template>
 
 <script setup lang="ts">
 import { mat4 } from 'gl-matrix'
 import { onMounted, ref } from 'vue'
-import vueLogo from './logo.png'
 
 const canvas = ref<HTMLCanvasElement>()
 
@@ -31,28 +30,22 @@ function main(canvas: HTMLCanvasElement) {
 
   const vsSource = `
     attribute vec4 aVertexPosition;
-    attribute vec2 aTextureCoord;
-
+    attribute vec4 aVertexColor;
     uniform mat4 uModelViewMatrix;
     uniform mat4 uProjectionMatrix;
-
-    varying highp vec2 vTextureCoord;
-
+    varying lowp vec4 vColor;
     void main(void) {
       gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
-      vTextureCoord = aTextureCoord;
+      vColor = aVertexColor;
     }
   `
 
   // Fragment shader program
 
   const fsSource = `
-    varying highp vec2 vTextureCoord;
-
-    uniform sampler2D uSampler;
-
+    varying lowp vec4 vColor;
     void main(void) {
-      gl_FragColor = texture2D(uSampler, vTextureCoord);
+      gl_FragColor = vColor;
     }
   `
 
@@ -62,26 +55,23 @@ function main(canvas: HTMLCanvasElement) {
 
   // Collect all the info needed to use the shader program.
   // Look up which attributes our shader program is using
-  // for aVertexPosition, aTextureCoord and also
+  // for aVertexPosition, aVertexColor and also
   // look up uniform locations.
   const programInfo = {
     program: shaderProgram,
     attribLocations: {
       vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
-      textureCoord: gl.getAttribLocation(shaderProgram, 'aTextureCoord'),
+      vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
     },
     uniformLocations: {
       projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
       modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
-      uSampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
     }
   }
 
   // Here's where we call the routine that builds all the
   // objects we'll be drawing.
   const buffers = initBuffers(gl)
-
-  const texture = loadTexture(gl, vueLogo)!
 
   var then = 0
 
@@ -91,7 +81,7 @@ function main(canvas: HTMLCanvasElement) {
     const deltaTime = now - then
     then = now
 
-    drawScene(gl, programInfo, buffers, texture, deltaTime, now)
+    drawScene(gl, programInfo, buffers, deltaTime, now)
 
     requestAnimationFrame(render)
   }
@@ -161,46 +151,32 @@ function initBuffers(gl: WebGLRenderingContext) {
 
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW)
 
-  // Now set up the texture coordinates for the faces.
+  // Now set up the colors for the faces. We'll use solid colors
+  // for each face.
 
-  const textureCoordBuffer = gl.createBuffer()
-  gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer)
-
-  const textureCoordinates = [
-    // Front
-    0.0,  0.0,
-    1.0,  0.0,
-    1.0,  1.0,
-    0.0,  1.0,
-    // Back
-    0.0,  0.0,
-    1.0,  0.0,
-    1.0,  1.0,
-    0.0,  1.0,
-    // Top
-    0.0,  0.0,
-    1.0,  0.0,
-    1.0,  1.0,
-    0.0,  1.0,
-    // Bottom
-    0.0,  0.0,
-    1.0,  0.0,
-    1.0,  1.0,
-    0.0,  1.0,
-    // Right
-    0.0,  0.0,
-    1.0,  0.0,
-    1.0,  1.0,
-    0.0,  1.0,
-    // Left
-    0.0,  0.0,
-    1.0,  0.0,
-    1.0,  1.0,
-    0.0,  1.0,
+  const faceColors = [
+    [1.0,  1.0,  1.0,  1.0],    // Front face: white
+    [1.0,  0.0,  0.0,  1.0],    // Back face: red
+    [0.0,  1.0,  0.0,  1.0],    // Top face: green
+    [0.0,  0.0,  1.0,  1.0],    // Bottom face: blue
+    [1.0,  1.0,  0.0,  1.0],    // Right face: yellow
+    [1.0,  0.0,  1.0,  1.0],    // Left face: purple
   ]
 
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoordinates),
-                gl.STATIC_DRAW)
+  // Convert the array of colors into a table for all the vertices.
+
+  var colors: number[] = []
+
+  for (var j = 0; j < faceColors.length; ++j) {
+    const c = faceColors[j]
+
+    // Repeat each color four times for the four vertices of the face
+    colors = colors.concat(c, c, c, c)
+  }
+
+  const colorBuffer = gl.createBuffer()
+  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer)
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW)
 
   // Build the element array buffer; this specifies the indices
   // into the vertex arrays for each face's vertices.
@@ -228,69 +204,15 @@ function initBuffers(gl: WebGLRenderingContext) {
 
   return {
     position: positionBuffer,
-    textureCoord: textureCoordBuffer,
+    color: colorBuffer,
     indices: indexBuffer,
   }
 }
 
 //
-// Initialize a texture and load an image.
-// When the image finished loading copy it into the texture.
-//
-function loadTexture(gl: WebGLRenderingContext, url: string) {
-  const texture = gl.createTexture()
-  gl.bindTexture(gl.TEXTURE_2D, texture)
-
-  // Because images have to be download over the internet
-  // they might take a moment until they are ready.
-  // Until then put a single pixel in the texture so we can
-  // use it immediately. When the image has finished downloading
-  // we'll update the texture with the contents of the image.
-  const level = 0
-  const internalFormat = gl.RGBA
-  const width = 1
-  const height = 1
-  const border = 0
-  const srcFormat = gl.RGBA
-  const srcType = gl.UNSIGNED_BYTE
-  const pixel = new Uint8Array([0, 0, 255, 255]);  // opaque blue
-  gl.texImage2D(gl.TEXTURE_2D, level, internalFormat,
-                width, height, border, srcFormat, srcType,
-                pixel)
-
-  const image = new Image()
-  image.onload = function() {
-    gl.bindTexture(gl.TEXTURE_2D, texture)
-    gl.texImage2D(gl.TEXTURE_2D, level, internalFormat,
-                  srcFormat, srcType, image)
-
-    // WebGL1 has different requirements for power of 2 images
-    // vs non power of 2 images so check if the image is a
-    // power of 2 in both dimensions.
-    if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
-       // Yes, it's a power of 2. Generate mips.
-       gl.generateMipmap(gl.TEXTURE_2D)
-      } else {
-       // No, it's not a power of 2. Turn of mips and set
-       // wrapping to clamp to edge
-       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-      }
-  }
-  image.src = url
-
-  return texture
-}
-
-function isPowerOf2(value: number) {
-  return (value & (value - 1)) == 0
-}
-
-//
 // Draw the scene.
 //
-function drawScene(gl: WebGLRenderingContext, programInfo: any, buffers: any, texture: WebGLTexture, deltaTime: number, now: number) {
+function drawScene(gl: WebGLRenderingContext, programInfo: any, buffers: any, deltaTime: number, now: number) {
   gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
   gl.clearDepth(1.0);                 // Clear everything
   gl.enable(gl.DEPTH_TEST);           // Enable depth testing
@@ -325,10 +247,10 @@ function drawScene(gl: WebGLRenderingContext, programInfo: any, buffers: any, te
   // the center of the scene.
   const modelViewMatrix = mat4.create()
 
+  const cubeRotation = now
+
   // Now move the drawing position a bit to where we want to
   // start drawing the square.
-
-  var cubeRotation = now
 
   mat4.translate(modelViewMatrix,     // destination matrix
                  modelViewMatrix,     // matrix to translate
@@ -358,29 +280,29 @@ function drawScene(gl: WebGLRenderingContext, programInfo: any, buffers: any, te
         normalize,
         stride,
         offset)
-        gl.enableVertexAttribArray(
+    gl.enableVertexAttribArray(
         programInfo.attribLocations.vertexPosition)
-      }
+  }
 
-  // Tell WebGL how to pull out the texture coordinates from
-  // the texture coordinate buffer into the textureCoord attribute.
+  // Tell WebGL how to pull out the colors from the color buffer
+  // into the vertexColor attribute.
   {
-    const numComponents = 2
+    const numComponents = 4
     const type = gl.FLOAT
     const normalize = false
     const stride = 0
     const offset = 0
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.textureCoord)
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color)
     gl.vertexAttribPointer(
-        programInfo.attribLocations.textureCoord,
+        programInfo.attribLocations.vertexColor,
         numComponents,
         type,
         normalize,
         stride,
         offset)
-        gl.enableVertexAttribArray(
-        programInfo.attribLocations.textureCoord)
-      }
+    gl.enableVertexAttribArray(
+        programInfo.attribLocations.vertexColor)
+  }
 
   // Tell WebGL which indices to use to index the vertices
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices)
@@ -395,21 +317,10 @@ function drawScene(gl: WebGLRenderingContext, programInfo: any, buffers: any, te
       programInfo.uniformLocations.projectionMatrix,
       false,
       projectionMatrix)
-      gl.uniformMatrix4fv(
+  gl.uniformMatrix4fv(
       programInfo.uniformLocations.modelViewMatrix,
       false,
       modelViewMatrix)
-
-  // Specify the texture to map onto the faces.
-
-  // Tell WebGL we want to affect texture unit 0
-  gl.activeTexture(gl.TEXTURE0)
-
-  // Bind the texture to texture unit 0
-  gl.bindTexture(gl.TEXTURE_2D, texture)
-
-  // Tell the shader we bound the texture to texture unit 0
-  gl.uniform1i(programInfo.uniformLocations.uSampler, 0)
 
   {
     const vertexCount = 36
@@ -417,6 +328,7 @@ function drawScene(gl: WebGLRenderingContext, programInfo: any, buffers: any, te
     const offset = 0
     gl.drawElements(gl.TRIANGLES, vertexCount, type, offset)
   }
+
 }
 
 //
